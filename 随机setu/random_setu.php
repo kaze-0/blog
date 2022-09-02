@@ -1,60 +1,32 @@
 <?php
-
-/**
- * 发送request请求
- * @param $url
- * @param bool $ssl
- * @param string $type
- * @param null $data
- * @return bool|mixed
- */
-function is_request($url, $ssl = true, $type = 'GET', $data = null)
-{
-    $curl = curl_init();
-    curl_setopt($curl, CURLOPT_URL, $url);
-    $user_agent = isset($_SERVER['HTTP_USERAGENT']) ? $_SERVER['HTTP_USERAGENT'] : 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36';
-    curl_setopt($curl, CURLOPT_USERAGENT, $user_agent); //请求代理信息
-    curl_setopt($curl, CURLOPT_AUTOREFERER, true); //referer头 请求来源
-    curl_setopt($curl, CURLOPT_TIMEOUT, 30); //请求超时
-    curl_setopt($curl, CURLOPT_HEADER, false); //是否处理响应头
-    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true); //curl_exec()是否返回响应
-    if ($ssl) {
-        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false); //禁用后curl将终止从服务端进行验证
-        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 2); //检查服务器ssl证书中是否存在一个公用名（common name）
+    function geturl($url){
+        $headerArray =array("Content-type:application/x-www-form-urlencoded;","Accept:application/json","charset=UTF-8");
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE); 
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headerArray);
+        $output = curl_exec($ch);
+        curl_close($ch);
+        $output = json_decode($output,true);
+        return $output;
     }
-    if ($type == "GET") {
-        curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-            'content-type :application/x-www-form-urlencoded; charset=UTF-8'//使用UTF-8配合urlencode函数解决中文参数乱码问题
-        ));
-    }
-    if ($type == "POST") {
-        curl_setopt($curl, CURLOPT_POST, true);
-        curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
-    }
-    //发出请求
-    $response = curl_exec($curl);
-    if ($response === false) {
-        return false;
-    }
-    return $response;
-}
-?>
-<?php
-function loadImg(){
-    if (!empty($_GET)) {
-        if($_GET['r18'] == 1){
-            $response = is_request("https://api.lolicon.app/setu/v2?r18=1&tag=".urlencode("萝莉"));
+    function loadImg(){
+        $r18 = 0;
+        if(!empty($_GET)){
+            if($_GET['r18'] == 1){
+                $r18 = 1; 
+            }
         }
-    }else{
-        $response = is_request("https://api.lolicon.app/setu/v2?r18=0&tag=".urlencode("萝莉"));//不要问为什么是萝莉，个人XP（
-    }
+        $response = geturl("https://api.lolicon.app/setu/v2?r18=$r18&tag=".urlencode("萝莉"));
 
-    $arr = json_decode($response, true);
-    //var_dump($arr["data"][0]["r18"]);//测试内容
-    $img_url = $arr["data"][0]["urls"]["original"];
-    return $img_url;
-}
-?>
+        $img[0] = $response["data"][0]["urls"]["original"];
+        $img[1] = $response["data"][0]["author"];
+        return $img;
+    }
+    $img = loadImg();?>
+
 <html>
 
 <head>
@@ -66,7 +38,10 @@ function loadImg(){
     <title>随机loli setu</title>
 </head>
 <body>
-    <p><img src="<?php echo loadImg(); ?>"></p>
+    
+    <p>画师：<?php echo $img[1]; ?><br></p>
+    <p><img src="<?php echo $img[0]; ?>"></p>
+    
     <footer>
         <p>使用API:<a href="https://api.lolicon.app/#/">LoliconAPI</a></p>
         <p>返回<a href="https://www.kaze-blog.co">风子的blog</a></p>
